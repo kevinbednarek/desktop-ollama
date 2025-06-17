@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/src/styles.css"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Tauri App</title>
+    <script type="module" src="/src/main.ts" defer></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+</head>
+
+<body>
+<sl-tab-group placement="start">
+    <sl-tab slot="nav" panel="chat">Chat</sl-tab>
+    <sl-tab slot="nav" panel="models">Models</sl-tab>
+    <sl-tab slot="nav" panel="about">About</sl-tab>
+
+    <sl-tab-panel name="chat">This is the chat tab panel.</sl-tab-panel>
+    <sl-tab-panel name="models">This is the models tab panel.</sl-tab-panel>
+    <sl-tab-panel name="about">This is the about tab panel.</sl-tab-panel>
+</sl-tab-group>
+
+<main class="container">
+    <div id="stream-chat-msg" class="chat-window"></div>
+    <form class="row" id="stream-chat-form">
+        <input id="stream-chat-input" placeholder="Let's chat!"/>
+        <button type="submit" id="chat-button">Chat</button>
+        <select id="model-select"></select>
+    </form>
+
+    <form class="row" id="model-download-form">
+        <input id="model-download-input" placeholder="Enter a model name"/>
+        <button type="submit" id="model-download-button">Download</button>
+    </form>
+
+    <form class="row" id="model-delete-form">
+        <input id="model-delete-input" placeholder="Enter a model name"/>
+        <button type="submit" id="model-delete-button">Delete</button>
+    </form>
+
+<!--    <button id="model-button">Get Models</button>-->
+    <p id="models-list"></p>
+
+</main>
+</body>
+</html>
