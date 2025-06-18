@@ -11,37 +11,57 @@
 </head>
 
 <body>
-<sl-tab-group placement="start">
-    <sl-tab slot="nav" panel="chat">Chat</sl-tab>
-    <sl-tab slot="nav" panel="models">Models</sl-tab>
-    <sl-tab slot="nav" panel="about">About</sl-tab>
-
-    <sl-tab-panel name="chat">This is the chat tab panel.</sl-tab-panel>
-    <sl-tab-panel name="models">This is the models tab panel.</sl-tab-panel>
-    <sl-tab-panel name="about">This is the about tab panel.</sl-tab-panel>
-</sl-tab-group>
 
 <main class="container">
-    <div id="stream-chat-msg" class="chat-window"></div>
-    <form class="row" id="stream-chat-form">
-        <input id="stream-chat-input" placeholder="Let's chat!"/>
-        <button type="submit" id="chat-button">Chat</button>
-        <select id="model-select"></select>
-    </form>
+    <nav class="top-nav">
+        <button type="button" class="nav-btn" data-panel="chat">Chat</button>
+        <button type="button" class="nav-btn" data-panel="models">Models</button>
+        <button type="button" class="nav-btn" data-panel="about">About</button>
+    </nav>
 
-    <form class="row" id="model-download-form">
-        <input id="model-download-input" placeholder="Enter a model name"/>
-        <button type="submit" id="model-download-button">Download</button>
-    </form>
+    <section id="panel-chat" class="panel">
+        <div id="stream-chat-msg" class="chat-window"></div>
+        <form class="row" id="stream-chat-form">
+            <input id="stream-chat-input" placeholder="Let's chat!"/>
+            <button type="submit" id="chat-button">Chat</button>
+            <select id="model-select"></select>
+            <button id="new-conversation-btn" type="button">New Conversation</button>
+        </form>
+    </section>
 
-    <form class="row" id="model-delete-form">
-        <input id="model-delete-input" placeholder="Enter a model name"/>
-        <button type="submit" id="model-delete-button">Delete</button>
-    </form>
+    <section id="panel-models" class="panel" style="display:none;">
+        <ul id="models-list"></ul>
 
-<!--    <button id="model-button">Get Models</button>-->
-    <p id="models-list"></p>
+        <form class="row" id="model-download-form">
+            <input id="model-download-input" placeholder="Enter a model tag"/>
+            <button type="submit" id="model-download-button">Download</button>
+        </form>
+        <div class="center-link">
+            <a id="available-models-link" href="https://ollama.com/library" target="_blank" rel="noopener noreferrer">Available models</a>
+        </div>
+    </section>
+
+    <section id="panel-about" class="panel" style="display:none;">
+        <p>Desktop Ollama UI built with Rust, Tauri, and Typescript.</p>
+    </section>
 
 </main>
+<script type="module" src="src/main.ts"></script>
+<script>
+  const navButtons = document.querySelectorAll('.nav-btn');
+  const panels = document.querySelectorAll('.panel');
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = btn.getAttribute('data-panel');
+      panels.forEach(p => {
+        p.style.display = (p.id === `panel-${panel}`) ? '' : 'none';
+      });
+      navButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+  // Set default active
+  navButtons[0].classList.add('active');
+</script>
 </body>
 </html>

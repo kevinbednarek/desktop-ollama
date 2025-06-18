@@ -35,7 +35,6 @@ async fn chat(
     let mut state = state.lock().await;
 
     let client = state.ollama.clone();
-    //TODO: Make this dynamic
     println!("Using model: {}", request.model);
     let mut messages = state.chat_history.clone();
     messages.push(ChatMessage::user(request.prompt));
@@ -66,6 +65,13 @@ async fn chat(
         }
     }
 
+    Ok(())
+}
+
+#[tauri::command]
+async fn new_conversation(state: State<'_, Mutex<AppState>>) -> Result<(), String> {
+    let mut state = state.lock().await;
+    state.chat_history.clear();
     Ok(())
 }
 
@@ -106,15 +112,12 @@ async fn download_model(model_name: String) -> Result<String, String> {
 
 #[tauri::command]
 async fn delete_model(model_name: String) -> Result<String, String> {
-    println!("Deleting model: {}", model_name);
     // Execute the "ollama delete" command to delete the model
     let output = std::process::Command::new("ollama")
         .arg("rm")
         .arg(&model_name)
         .output()
         .map_err(|e| format!("Failed to execute 'ollama delete': {:?}", e))?;
-
-    println!("Got the Output");
 
     if output.status.success() {
         println!("Output success");
@@ -141,6 +144,7 @@ pub fn run() {
             delete_model,
             get_models,
             chat,
+            new_conversation
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
