@@ -22,10 +22,12 @@
     <section id="panel-chat" class="panel">
         <div id="stream-chat-msg" class="chat-window"></div>
         <form class="row" id="stream-chat-form">
-            <input id="stream-chat-input" placeholder="Let's chat!"/>
-            <button type="submit" id="chat-button">Chat</button>
-            <select id="model-select"></select>
-            <button id="new-conversation-btn" type="button">New Conversation</button>
+            <input id="stream-chat-input" placeholder="Let's chat!" class="chat-input-full"/>
+            <div class="chat-form-row">
+                <button type="submit" id="chat-button">Chat</button>
+                <select id="model-select"></select>
+                <button id="new-conversation-btn" type="button">New Conversation</button>
+            </div>
         </form>
     </section>
 
@@ -45,6 +47,13 @@
         <p>Desktop Ollama UI built with Rust, Tauri, and Typescript.</p>
     </section>
 
+    <!-- Model Info Modal -->
+    <div id="model-info-modal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <span id="model-info-modal-close" class="modal-close">&times;</span>
+        <pre id="model-info-modal-content"></pre>
+      </div>
+    </div>
 </main>
 <script type="module" src="src/main.ts"></script>
 <script>

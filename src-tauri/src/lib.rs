@@ -1,5 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
+use std::any::{Any, TypeId};
 use futures_util::StreamExt;
 use ollama_rs::generation::chat::request::ChatMessageRequest;
 use ollama_rs::generation::chat::ChatMessage;
@@ -35,7 +36,6 @@ async fn chat(
     let mut state = state.lock().await;
 
     let client = state.ollama.clone();
-    println!("Using model: {}", request.model);
     let mut messages = state.chat_history.clone();
     messages.push(ChatMessage::user(request.prompt));
     let chat_request = ChatMessageRequest::new(request.model, messages.clone());
@@ -89,7 +89,6 @@ async fn get_models(state: State<'_, Mutex<AppState>>) -> Result<Vec<String>, St
 
 #[tauri::command]
 async fn download_model(model_name: String) -> Result<String, String> {
-    println!("Downloading model: {}", model_name);
     // Execute the "ollama pull" command to download the model
     let output = std::process::Command::new("ollama")
         .arg("pull")
@@ -97,14 +96,10 @@ async fn download_model(model_name: String) -> Result<String, String> {
         .output()
         .map_err(|e| format!("Failed to execute 'ollama pull': {:?}", e))?;
 
-    println!("Got the Output");
-
     if output.status.success() {
-        println!("Output success");
         // If the command was successful, return the output as a string
         Ok(model_name)
     } else {
-        println!("Output failure");
         // If the command failed, return the error message
         Err(model_name)
     }
@@ -120,11 +115,9 @@ async fn delete_model(model_name: String) -> Result<String, String> {
         .map_err(|e| format!("Failed to execute 'ollama delete': {:?}", e))?;
 
     if output.status.success() {
-        println!("Output success");
         // If the command was successful, return a success message
         Ok(format!("Model '{}' deleted successfully!", model_name))
     } else {
-        println!("Output failure");
         // If the command failed, return the error message
         Err(format!(
             "Failed to delete model '{}': {}",
@@ -132,6 +125,14 @@ async fn delete_model(model_name: String) -> Result<String, String> {
             String::from_utf8_lossy(&output.stderr)
         ))
     }
+}
+
+#[tauri::command]
+async fn show_model_info(model_name: String, state: State<'_, Mutex<AppState>>) -> Result<serde_json::map::Map<String, serde_json::value::Value>, String> {
+    let client = state.lock().await.ollama.clone();
+    let info = client.show_model_info(model_name).await.map_err(|e| e.to_string())?;
+
+    Ok(info.model_info)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -144,7 +145,8 @@ pub fn run() {
             delete_model,
             get_models,
             chat,
-            new_conversation
+            new_conversation,
+            show_model_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,6 +1,11 @@
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 
+// Utility type for model info
+interface ModelInfo {
+  [key: string]: string | number | null;
+}
+
 let streamChatInputEl: HTMLInputElement | null;
 let streamChatMsgEl: HTMLElement | null;
 let streamChatButtonEl: HTMLButtonElement | null;
@@ -65,38 +70,31 @@ async function newConversation() {
     renderConversation();
 }
 
+// Improved: Only fetch models once, use for both select and list
 async function getModels() {
+    const models: string[] = await invoke("get_models");
     if (modelSelectEl) {
-        // Fetch the models from the Rust backend
-        const models: string[] = await invoke("get_models");
-
-        // Clear existing options
         modelSelectEl.innerHTML = "";
-
-        // Add new options to the select element
         models.forEach((model) => {
             const option = document.createElement("option");
             option.value = model;
             option.textContent = model;
-            // @ts-ignore
-            modelSelectEl.appendChild(option);
+            modelSelectEl?.appendChild(option);
         });
     }
-
-    // Populate the models-list ul
     const modelsListEl = document.querySelector("#models-list");
     if (modelsListEl) {
-        // Fetch the models from the Rust backend
-        const models: string[] = await invoke("get_models");
         modelsListEl.innerHTML = "";
         models.forEach((model) => {
             const li = document.createElement("li");
-            li.style.display = "flex";
-            li.style.alignItems = "center";
-            li.style.justifyContent = "space-between";
-            li.style.gap = "0.5em";
-            li.textContent = model;
-            // Trash can icon (SVG)
+            const modelLink = document.createElement("a");
+            modelLink.href = "#";
+            modelLink.textContent = model;
+            modelLink.addEventListener("click", (e) => {
+                e.preventDefault();
+                showModelInfo(model);
+            });
+            li.appendChild(modelLink);
             const trash = document.createElement("span");
             trash.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='3 6 5 6 21 6'></polyline><path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2'></path><line x1='10' y1='11' x2='10' y2='17'></line><line x1='14' y1='11' x2='14' y2='17'></line></svg>`;
             trash.style.cursor = "pointer";
@@ -157,8 +155,6 @@ async function deleteModel(modelName?: string) {
         return;
     }
 
-    console.log("Inside downloadModel function");
-
     if (modelDeleteInputEl && modelSelectEl && modelDeleteButtonEl) {
         modelDeleteButtonEl.textContent = "Deleting...";
         const modelName = modelDeleteInputEl.value;
@@ -171,6 +167,43 @@ async function deleteModel(modelName?: string) {
         modelDeleteInputEl.textContent = "";
         modelDeleteButtonEl.textContent = "Delete";
         getModels();
+    }
+}
+
+// Improved: Add type and error handling
+async function showModelInfo(modelName: string): Promise<void> {
+    try {
+        const info: ModelInfo = await invoke("show_model_info", { modelName });
+        showModal(info);
+    } catch (err) {
+        alert("Failed to fetch model info: " + err);
+    }
+}
+
+// Improved: Add type and error handling
+function showModal(content: ModelInfo | string): void {
+    let modal = document.getElementById("model-info-modal");
+    let modalContent = document.getElementById("model-info-modal-content");
+    if (modal && modalContent) {
+        if (typeof content === 'object' && content !== null) {
+            let html = '<table style="width:100%;border-collapse:collapse;">';
+            for (const [key, value] of Object.entries(content)) {
+                let displayValue = value;
+                if (typeof value === 'string' && value.startsWith('String("')) {
+                    displayValue = value.replace(/^String\("|"\)$/g, '');
+                } else if (typeof value === 'string' && value.startsWith('Number(')) {
+                    displayValue = value.replace(/^Number\(|\)$/g, '');
+                } else if (value === null || value === 'Null') {
+                    displayValue = '<span style="color:#888;">null</span>';
+                }
+                html += `<tr><td style='padding:4px 8px;border-bottom:1px solid #eee;vertical-align:top;'><strong>${key}</strong></td><td style='padding:4px 8px;border-bottom:1px solid #eee;'>${displayValue}</td></tr>`;
+            }
+            html += '</table>';
+            modalContent.innerHTML = html;
+        } else {
+            modalContent.textContent = String(content);
+        }
+        modal.style.display = "flex";
     }
 }
 
@@ -204,4 +237,20 @@ window.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#new-conversation-btn")?.addEventListener("click", () => {
         newConversation();
     });
+
+    // Modal close logic
+    const modal = document.getElementById("model-info-modal");
+    const modalClose = document.getElementById("model-info-modal-close");
+    if (modal && modalClose) {
+        modalClose.addEventListener("click", () => {
+            modal.style.display = "none";
+        });
+        // Close modal when clicking outside modal-content
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
 });
+

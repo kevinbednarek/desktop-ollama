@@ -1,7 +1,39 @@
-# Tauri + Vanilla TS
+# Desktop Ollama
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Typescript.
+A desktop application wrapper around [Ollama](https://ollama.com/) built with [Tauri](https://tauri.app/) and [ollama-rs](https://github.com/pepperoni21/ollama-rs).
 
-## Recommended IDE Setup
+## Roadmap
+### Chat
+- [x] Chat streaming
+- [x] Enable conversation history
+- [x] New conversation
+- [ ] Enable system prompts
+- [ ] Enable custom models
+- [ ] Enable multi-modal models
+  - [ ] Image input
+  - [ ] Image output
+- [ ] File upload for prompt context
+- [ ] Tool support
+  - [ ] Web browsing (DuckDuckGo)
+  - [ ] Scraper
+  - [ ] Calculator
+- [ ] Function calling
+- [ ] Custom model options
+- [ ] Structured output - templates
+- [ ] Structured output - dynamic
+- [ ] Enable embedding models
+### UI
+- [ ] Dark mode
+### Misc
+- [x] Model Download
+- [x] Model Delete
+- [x] Show model info
+- [ ] App startup checks
+  - [ ] Check if Ollama is installed
+  - [ ] Check if Ollama is running
+  - [ ] Check for available models
+- [ ] Assisted Ollama installation
+- [ ] Ollama update checks
+- [ ] Show Ollama status
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+
