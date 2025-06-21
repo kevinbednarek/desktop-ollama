@@ -74,14 +74,16 @@ The built application will be available in the `src-tauri/target/release/bundle`
 - [ ] Custom model options
 - [ ] Structured output - templates
 - [ ] Structured output - dynamic
-- [ ] Enable embedding models
+- [x] Support embedding models
+- [ ] Enable batch embedding generation
 ### UI
 - [ ] Dark mode
 - [ ] Disable buttons during async operations
 - [ ] Adding animations during processing/loading
-### Misc
-- [x] Model Download
-- [x] Model Delete
+### Misc Features
+- [x] Model download
+- [ ] Model download stream with progress indicator 
+- [x] Model delete
 - [x] Show model info
 - [ ] App startup checks
   - [ ] Check if Ollama is installed
@@ -90,3 +92,7 @@ The built application will be available in the `src-tauri/target/release/bundle`
 - [ ] Assisted Ollama installation
 - [ ] Ollama update checks
 - [ ] Show Ollama status
+- [ ] Sort and models by capability
+### Code Cleanup
+- [ ] Clean up Typescript code
+- [ ] Error handling for Rust code

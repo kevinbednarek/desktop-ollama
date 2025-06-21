@@ -6,14 +6,24 @@ interface ModelInfo {
   [key: string]: string | number | null;
 }
 
+type Model = {
+    name: string,
+    license: string,
+    parameters: string,
+    template: string,
+    modelFile: string,
+    modelInfo: Map<string, any>,
+    capabilities: string[],
+}
+
+let models: Model[] = [];
+
 let streamChatInputEl: HTMLInputElement | null;
 let streamChatMsgEl: HTMLElement | null;
 let streamChatButtonEl: HTMLButtonElement | null;
 let modelSelectEl: HTMLSelectElement | null;
 let modelDownloadInputEl: HTMLInputElement | null;
 let modelDownloadButtonEl: HTMLButtonElement | null;
-let modelDeleteInputEl: HTMLInputElement | null;
-let modelDeleteButtonEl: HTMLButtonElement | null;
 
 let conversation: { role: "user" | "assistant", content: string }[] = [];
 
@@ -70,15 +80,17 @@ async function newConversation() {
     renderConversation();
 }
 
-// Improved: Only fetch models once, use for both select and list
+//Takes the shared Model list and populates all relevant UI elements
 async function getModels() {
-    const models: string[] = await invoke("get_models");
+    //const models: string[] = await invoke("get_models");
     if (modelSelectEl) {
+        console.log("Updating HTML select options");
         modelSelectEl.innerHTML = "";
         models.forEach((model) => {
+            console.log("Adding model to select element: " + model.name);
             const option = document.createElement("option");
-            option.value = model;
-            option.textContent = model;
+            option.value = model.name;
+            option.textContent = model.name;
             modelSelectEl?.appendChild(option);
         });
     }
@@ -86,13 +98,14 @@ async function getModels() {
     if (modelsListEl) {
         modelsListEl.innerHTML = "";
         models.forEach((model) => {
+            console.log("Adding model to model list: " + model.name);
             const li = document.createElement("li");
             const modelLink = document.createElement("a");
             modelLink.href = "#";
-            modelLink.textContent = model;
+            modelLink.textContent = model.name;
             modelLink.addEventListener("click", (e) => {
                 e.preventDefault();
-                showModelInfo(model);
+                showModelInfo(model.name);
             });
             li.appendChild(modelLink);
             const trash = document.createElement("span");
@@ -101,7 +114,7 @@ async function getModels() {
             trash.title = "Delete model";
             trash.addEventListener("click", (e) => {
                 e.stopPropagation();
-                deleteModel(model);
+                deleteModel(model.name);
             });
             li.appendChild(trash);
             modelsListEl.appendChild(li);
@@ -112,7 +125,10 @@ async function getModels() {
 async function downloadModel() {
     if (modelDownloadInputEl && modelSelectEl && modelDownloadButtonEl) {
         modelDownloadButtonEl.textContent = "Downloading...";
+        modelDownloadButtonEl.disabled = true;
         const modelName = modelDownloadInputEl.value;
+        modelDownloadInputEl.textContent = "";
+        modelDownloadInputEl.value = "";
 
         // Call the Rust function to download the model
         let res = await invoke("download_model", {modelName: modelName});
@@ -122,27 +138,20 @@ async function downloadModel() {
             alert("Failed to download " + modelName);
         }
 
-        // Clear the input field
-        modelDownloadInputEl.textContent = "";
         // Reset the button text
         modelDownloadButtonEl.textContent = "Download";
+        modelDownloadButtonEl.disabled = false;
         // Fetch the models from the Rust backend
-        getModels();
+        await getModels();
     }
 }
 
 async function deleteModel(modelName?: string) {
     if (modelName) {
-        console.log('Attempting to delete model:', modelName); // Debug
-        // Called from trash icon
-        // const confirmed = confirm(`Are you sure you want to delete model: ${modelName}?`);
-        // if (!confirmed) return;
         let res;
         try {
             res = await invoke("delete_model", {modelName});
-            console.log('delete_model result:', res); // Debug
         } catch (err) {
-            console.error('Error invoking delete_model:', err);
             alert("Error deleting model: " + err);
             return;
         }
@@ -151,26 +160,11 @@ async function deleteModel(modelName?: string) {
         } else {
             alert("Failed to delete " + modelName);
         }
-        getModels();
+        await getModels();
         return;
-    }
-
-    if (modelDeleteInputEl && modelSelectEl && modelDeleteButtonEl) {
-        modelDeleteButtonEl.textContent = "Deleting...";
-        const modelName = modelDeleteInputEl.value;
-        let res = await invoke("delete_model", {modelName: modelName});
-        if (res) {
-            alert(res + " deleted successfully!");
-        } else {
-            alert("Failed to delete " + modelName);
-        }
-        modelDeleteInputEl.textContent = "";
-        modelDeleteButtonEl.textContent = "Delete";
-        getModels();
     }
 }
 
-// Improved: Add type and error handling
 async function showModelInfo(modelName: string): Promise<void> {
     try {
         const info: ModelInfo = await invoke("show_model_info", { modelName });
@@ -178,6 +172,10 @@ async function showModelInfo(modelName: string): Promise<void> {
     } catch (err) {
         alert("Failed to fetch model info: " + err);
     }
+}
+
+async function init() {
+    await invoke("init");
 }
 
 // Improved: Add type and error handling
@@ -214,10 +212,14 @@ window.addEventListener("DOMContentLoaded", () => {
     modelSelectEl = document.querySelector("#model-select");
     modelDownloadInputEl = document.querySelector("#model-download-input");
     modelDownloadButtonEl = document.querySelector("#model-download-button");
-    modelDeleteInputEl = document.querySelector("#model-delete-input");
-    modelDeleteButtonEl = document.querySelector("#model-delete-button");
 
-    getModels();
+    // @ts-ignore
+    init();
+    listen<Model[]>('model-list-update', (event) => {
+        models = event.payload;
+        getModels();
+    });
+
 
     document.querySelector("#stream-chat-form")?.addEventListener("submit", (e) => {
         e.preventDefault();

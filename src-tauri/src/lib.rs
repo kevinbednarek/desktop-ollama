@@ -1,24 +1,38 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod client_utils;
 
-use std::any::{Any, TypeId};
 use futures_util::StreamExt;
 use ollama_rs::generation::chat::request::ChatMessageRequest;
 use ollama_rs::generation::chat::ChatMessage;
+use ollama_rs::generation::embeddings::request::{EmbeddingsInput, GenerateEmbeddingsRequest};
+use ollama_rs::models::ModelInfo;
 use ollama_rs::Ollama;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use tauri::{Emitter, State};
 use tokio::sync::Mutex;
+use crate::client_utils::get_model_names;
 
 #[derive(Default)]
 struct AppState {
     ollama: Ollama,
-    model: String,
+    models: Vec<Model>,
     chat_history: Vec<ChatMessage>,
 }
 
 #[derive(Serialize, Debug, Clone)]
 struct ChatResponse {
     message: String,
+}
+
+#[derive(Default, Debug, Clone, Serialize)]
+struct Model {
+    name: String,
+    license: String,
+    parameters: String,
+    template: String,
+    model_file: String,
+    model_info: Map<String, Value>,
+    capabilities: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -34,13 +48,55 @@ async fn chat(
     app: tauri::AppHandle,
 ) -> Result<(), String> {
     let mut state = state.lock().await;
+    let ollama = state.ollama.clone();
 
-    let client = state.ollama.clone();
+    let capabilities = state
+        .models
+        .iter()
+        .find(|m| m.name == request.model)
+        .map(|m| m.capabilities.clone())
+        .unwrap_or_default();
+
+    println!("Capabilities for model '{}': {:?}", request.model, capabilities);
+
+    if capabilities.contains(&"embedding".to_string()) {
+        //TODO: Do embedding generation logic here
+        let response = ollama
+            .generate_embeddings(GenerateEmbeddingsRequest::new(
+                request.model.clone(),
+                EmbeddingsInput::Single(request.prompt.clone())))
+            .await;
+        match response {
+            Ok(embeddings) => {
+                let embedding_string: String = embeddings.embeddings.iter()
+                    .map(|row| row
+                        .iter()
+                        .map(|&x| x.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "))
+                    .collect::<Vec<String>>()
+                    .join("\n");
+
+                let chat_response = ChatResponse {
+                    message: embedding_string,
+                };
+                // Emit the embeddings to the frontend
+                app.emit("chat-message", chat_response)
+                    .map_err(|e| e.to_string())?;
+            },
+            Err(e) => {
+                return Err(format!("Failed to generate embeddings: {:?}", e));
+            }
+        }
+        return Ok(())
+    };
+
+    //TODO: Isolate regular chat/completion logic
     let mut messages = state.chat_history.clone();
     messages.push(ChatMessage::user(request.prompt));
     let chat_request = ChatMessageRequest::new(request.model, messages.clone());
 
-    let mut stream = client
+    let mut stream = ollama
         .send_chat_messages_stream(chat_request)
         .await
         .map_err(|e| format!("Failed to start chat stream: {:?}", e))?;
@@ -51,6 +107,7 @@ async fn chat(
         let chat_response = ChatResponse {
             message: response.message.content,
         };
+        print!("{}", &chat_response.message);
         // Building the response from the assistant
         chat_response_text.push_str(&chat_response.message);
         // Emitting a message to the "chat-message" listener on the frontend
@@ -75,64 +132,130 @@ async fn new_conversation(state: State<'_, Mutex<AppState>>) -> Result<(), Strin
     Ok(())
 }
 
-#[tauri::command]
+/*#[tauri::command]
 async fn get_models(state: State<'_, Mutex<AppState>>) -> Result<Vec<String>, String> {
-    let models = {
-        let client = state.lock().await.ollama.clone();
-        client
-            .list_local_models()
-            .await
-            .map_err(|e| format!("Failed to list models: {:?}", e))?
-    };
-    Ok(models.iter().map(|m| m.name.clone()).collect())
-}
+    let ollama = state.lock().await.ollama.clone();
+    let res = get_model_names(&ollama).await;
+    match res {
+        Ok(models) => Ok(models),
+        Err(e) => Err(format!("Failed to get model names: {}", e)),
+    }
+}*/
 
 #[tauri::command]
-async fn download_model(model_name: String) -> Result<String, String> {
-    // Execute the "ollama pull" command to download the model
-    let output = std::process::Command::new("ollama")
-        .arg("pull")
-        .arg(&model_name)
-        .output()
-        .map_err(|e| format!("Failed to execute 'ollama pull': {:?}", e))?;
+async fn download_model(
+    model_name: String,
+    state: State<'_, Mutex<AppState>>,
+    app: tauri::AppHandle
+) -> Result<(), String> {
+    let mut state = state.lock().await;
+    let ollama = state.ollama.clone();
 
-    if output.status.success() {
-        // If the command was successful, return the output as a string
-        Ok(model_name)
-    } else {
-        // If the command failed, return the error message
-        Err(model_name)
+    let model = ollama
+        .pull_model(model_name.clone(), false)
+        .await;
+
+    match model {
+        Ok(_) => {
+            let info = ollama
+                .show_model_info(model_name.clone())
+                .await
+                .map_err(|e| format!("Failed to get model info for '{}': {}", model_name, e))?;
+
+            let model = Model {
+                name: model_name,
+                license: info.license,
+                parameters: info.parameters,
+                template: info.template,
+                model_file: info.modelfile,
+                model_info: info.model_info,
+                capabilities: info.capabilities,
+            };
+
+            state.models.push(model);
+
+            //Update models list on the frontend
+            app.emit("model-list-update", state.models.clone()).map_err(|e| e.to_string())?;
+
+            Ok(())
+        },
+        Err(e) => Err(format!("Failed to download model '{}': {}", model_name, e))
     }
 }
 
 #[tauri::command]
-async fn delete_model(model_name: String) -> Result<String, String> {
-    // Execute the "ollama delete" command to delete the model
-    let output = std::process::Command::new("ollama")
-        .arg("rm")
-        .arg(&model_name)
-        .output()
-        .map_err(|e| format!("Failed to execute 'ollama delete': {:?}", e))?;
+async fn delete_model(
+    model_name: String,
+    state: State<'_, Mutex<AppState>>,
+    app: tauri::AppHandle
+) -> Result<(), String> {
+    let mut state = state.lock().await;
+    let ollama = state.ollama.clone();
 
-    if output.status.success() {
-        // If the command was successful, return a success message
-        Ok(format!("Model '{}' deleted successfully!", model_name))
-    } else {
-        // If the command failed, return the error message
-        Err(format!(
-            "Failed to delete model '{}': {}",
-            model_name,
-            String::from_utf8_lossy(&output.stderr)
-        ))
+    let model = ollama
+        .delete_model(model_name.clone())
+        .await;
+
+    match model {
+        Ok(_) => {
+            state.models.retain(|m| m.name != model_name);
+
+            //Update models list on the frontend
+            app.emit("model-list-update", state.models.clone()).map_err(|e| e.to_string())?;
+
+            Ok(())
+        },
+        Err(e) => Err(format!("Failed to delete model '{}': {}", model_name, e))
     }
 }
 
 #[tauri::command]
-async fn show_model_info(model_name: String, state: State<'_, Mutex<AppState>>) -> Result<serde_json::map::Map<String, serde_json::value::Value>, String> {
+async fn show_model_info(
+    model_name: String,
+    state: State<'_, Mutex<AppState>>
+) -> Result<Map<String, Value>, String> {
     let client = state.lock().await.ollama.clone();
-    let info = client.show_model_info(model_name).await.map_err(|e| e.to_string())?;
+    let info: ModelInfo = client.show_model_info(model_name).await.map_err(|e| e.to_string())?;
 
     Ok(info.model_info)
+}
+
+#[tauri::command]
+async fn init(
+    state: State<'_, Mutex<AppState>>,
+    app: tauri::AppHandle
+) -> Result<(), String> {
+    let mut state = state.lock().await;
+    let ollama = state.ollama.clone();
+
+    //TODO: Check if the Ollama server is running
+
+    let model_names = get_model_names(&ollama).await?;
+
+    for model_name in model_names {
+        if !state.models.iter().any(|m| m.name == model_name) {
+            let info = ollama
+                .show_model_info(model_name.clone())
+                .await
+                .map_err(|e| format!("Failed to get model info for '{}': {}", model_name, e))?;
+
+            let model = Model {
+                name: model_name,
+                license: info.license,
+                parameters: info.parameters,
+                template: info.template,
+                model_file: info.modelfile,
+                model_info: info.model_info,
+                capabilities: info.capabilities,
+            };
+
+            state.models.push(model);
+        }
+    }
+    //Update models list on the frontend
+    app.emit("model-list-update", state.models.clone()).map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -143,10 +266,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             download_model,
             delete_model,
-            get_models,
+            //get_models,
             chat,
             new_conversation,
-            show_model_info
+            show_model_info,
+            init
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
