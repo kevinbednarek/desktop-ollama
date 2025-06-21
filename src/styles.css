@@ -293,6 +293,12 @@ select:focus {
   justify-content: center;
 }
 
+.chat-form-row > #stream-chat-input.chat-input-full,
+.chat-form-row > #chat-button {
+  height: 44px;
+  box-sizing: border-box;
+}
+
 #panel-chat {
   display: flex;
   flex-direction: column;

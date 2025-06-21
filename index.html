@@ -22,9 +22,11 @@
     <section id="panel-chat" class="panel">
         <div id="stream-chat-msg" class="chat-window"></div>
         <form class="row" id="stream-chat-form">
-            <input id="stream-chat-input" placeholder="Let's chat!" class="chat-input-full"/>
             <div class="chat-form-row">
+                <input id="stream-chat-input" placeholder="Let's chat!" class="chat-input-full"/>
                 <button type="submit" id="chat-button">Chat</button>
+            </div>
+            <div class="chat-form-row">
                 <select id="model-select"></select>
                 <button id="new-conversation-btn" type="button">New Conversation</button>
             </div>
@@ -51,7 +53,17 @@
     <div id="model-info-modal" class="modal" style="display:none;">
       <div class="modal-content">
         <span id="model-info-modal-close" class="modal-close">&times;</span>
-        <pre id="model-info-modal-content"></pre>
+        <div id="model-info-header" style="text-align:center; margin-bottom:1em;"></div>
+        <sl-tab-group id="model-info-tabs">
+          <sl-tab slot="nav" panel="info">Model Info</sl-tab>
+          <sl-tab slot="nav" panel="license">License</sl-tab>
+          <sl-tab slot="nav" panel="parameters">Parameters</sl-tab>
+          <sl-tab slot="nav" panel="template">Template</sl-tab>
+          <sl-tab-panel name="info"><pre id="model-info-details">Add model info details</pre></sl-tab-panel>
+          <sl-tab-panel name="license"><pre id="model-info-license">Add license info</pre></sl-tab-panel>
+          <sl-tab-panel name="parameters"><pre id="model-info-parameters">Add parameters</pre></sl-tab-panel>
+          <sl-tab-panel name="template"><pre id="model-info-template">Add template</pre></sl-tab-panel>
+        </sl-tab-group>
       </div>
     </div>
 </main>

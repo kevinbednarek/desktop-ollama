@@ -89,6 +89,8 @@ The built application will be available in the `src-tauri/target/release/bundle`
   - [ ] Check if Ollama is installed
   - [ ] Check if Ollama is running
   - [ ] Check for available models
+    - [x] Initialize models on startup
+    - [ ] Show an error if no models are available
 - [ ] Assisted Ollama installation
 - [ ] Ollama update checks
 - [ ] Show Ollama status

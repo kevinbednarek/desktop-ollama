@@ -2,9 +2,9 @@ import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 
 // Utility type for model info
-interface ModelInfo {
-  [key: string]: string | number | null;
-}
+// interface ModelInfo {
+//   [key: string]: string | number | null;
+// }
 
 type Model = {
     name: string,
@@ -24,6 +24,8 @@ let streamChatButtonEl: HTMLButtonElement | null;
 let modelSelectEl: HTMLSelectElement | null;
 let modelDownloadInputEl: HTMLInputElement | null;
 let modelDownloadButtonEl: HTMLButtonElement | null;
+// let modelDeleteInputEl: HTMLInputElement | null;
+// let modelDeleteButtonEl: HTMLButtonElement | null;
 
 let conversation: { role: "user" | "assistant", content: string }[] = [];
 
@@ -163,12 +165,32 @@ async function deleteModel(modelName?: string) {
         await getModels();
         return;
     }
+
+    //TODO: Remove code referencing model-delete-input and model-delete-button elements
+    /*if (modelDeleteInputEl && modelSelectEl && modelDeleteButtonEl) {
+        modelDeleteButtonEl.textContent = "Deleting...";
+        const modelName = modelDeleteInputEl.value;
+        let res = await invoke("delete_model", {modelName: modelName});
+        if (res) {
+            alert(res + " deleted successfully!");
+        } else {
+            alert("Failed to delete " + modelName);
+        }
+        modelDeleteInputEl.textContent = "";
+        modelDeleteButtonEl.textContent = "Delete";
+        getModels();
+    }*/
 }
 
 async function showModelInfo(modelName: string): Promise<void> {
     try {
-        const info: ModelInfo = await invoke("show_model_info", { modelName });
-        showModal(info);
+        // const info: ModelInfo = await invoke("show_model_info", { modelName });
+        // showModal(info);
+
+        //Get model info from shared models list
+        // @ts-ignore
+        const model: Model = models.find(m => m.name === modelName);
+        showModelModal(model);
     } catch (err) {
         alert("Failed to fetch model info: " + err);
     }
@@ -179,7 +201,7 @@ async function init() {
 }
 
 // Improved: Add type and error handling
-function showModal(content: ModelInfo | string): void {
+/*function showModal(content: ModelInfo | string): void {
     let modal = document.getElementById("model-info-modal");
     let modalContent = document.getElementById("model-info-modal-content");
     if (modal && modalContent) {
@@ -203,6 +225,47 @@ function showModal(content: ModelInfo | string): void {
         }
         modal.style.display = "flex";
     }
+}*/
+
+function showModelModal(model: Model): void {
+    console.log("is this working?");
+    let modal = document.getElementById("model-info-modal");
+    //let modalContent = document.getElementById("model-info-modal-content");
+    if (modal) {
+        let detailsEl = document.getElementById("model-info-details");
+        let licenseEl = document.getElementById("model-info-license");
+        let parametersEl = document.getElementById("model-info-parameters");
+        let templateEl = document.getElementById("model-info-template");
+
+        if (detailsEl) {
+            // Display model name and capabilities
+            let html = `<strong>${model.name}</strong><br>`;
+            html += `<span style='font-size:0.95em;color:#888;'>Capabilities: ${model.capabilities?.join(", ") || "None"}</span><br><br>`;
+
+            detailsEl.innerHTML = html;
+        }
+        if (licenseEl) {
+            licenseEl.textContent = model.license || "No license info.";
+        }
+        if (parametersEl) {
+            parametersEl.textContent = model.parameters || "No parameters.";
+        }
+        if (templateEl) {
+            templateEl.textContent = model.template || "No template info.";
+        }
+        modal.style.display = "flex";
+    }
+}
+
+function updateChatInputPlaceholderForSelectedModel() {
+    if (!modelSelectEl || !streamChatInputEl) return;
+    const selectedModelName = modelSelectEl.value;
+    const selectedModel = models.find(m => m.name === selectedModelName);
+    if (selectedModel && selectedModel.capabilities && selectedModel.capabilities.length > 0) {
+        streamChatInputEl.placeholder = `Capabilities: ${selectedModel.capabilities.join(", ")}`;
+    } else {
+        streamChatInputEl.placeholder = "Let's chat!";
+    }
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -212,12 +275,19 @@ window.addEventListener("DOMContentLoaded", () => {
     modelSelectEl = document.querySelector("#model-select");
     modelDownloadInputEl = document.querySelector("#model-download-input");
     modelDownloadButtonEl = document.querySelector("#model-download-button");
+    // modelDeleteInputEl = document.querySelector("#model-delete-input");
+    // modelDeleteButtonEl = document.querySelector("#model-delete-button");
 
     // @ts-ignore
     init();
     listen<Model[]>('model-list-update', (event) => {
+        console.log(
+            `Models: ${JSON.stringify(event.payload.map(model => model.name))}`
+        );
         models = event.payload;
+        console.log("Model count: " + models.length);
         getModels();
+        updateChatInputPlaceholderForSelectedModel();
     });
 
 
@@ -240,6 +310,11 @@ window.addEventListener("DOMContentLoaded", () => {
         newConversation();
     });
 
+    // Update chat input placeholder on select change
+    if (modelSelectEl) {
+        modelSelectEl.addEventListener("change", updateChatInputPlaceholderForSelectedModel);
+    }
+
     // Modal close logic
     const modal = document.getElementById("model-info-modal");
     const modalClose = document.getElementById("model-info-modal-close");
@@ -255,4 +330,3 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
-
