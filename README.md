@@ -94,7 +94,8 @@ The built application will be available in the `src-tauri/target/release/bundle`
 - [ ] Assisted Ollama installation
 - [ ] Ollama update checks
 - [ ] Show Ollama status
-- [ ] Sort and models by capability
+- [x] Show model capabilities
+- [ ] More convenient app download
 ### Code Cleanup
 - [ ] Clean up Typescript code
-- [ ] Error handling for Rust code
+- [ ] Add error handling

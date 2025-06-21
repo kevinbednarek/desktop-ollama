@@ -1,11 +1,6 @@
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 
-// Utility type for model info
-// interface ModelInfo {
-//   [key: string]: string | number | null;
-// }
-
 type Model = {
     name: string,
     license: string,
@@ -24,8 +19,6 @@ let streamChatButtonEl: HTMLButtonElement | null;
 let modelSelectEl: HTMLSelectElement | null;
 let modelDownloadInputEl: HTMLInputElement | null;
 let modelDownloadButtonEl: HTMLButtonElement | null;
-// let modelDeleteInputEl: HTMLInputElement | null;
-// let modelDeleteButtonEl: HTMLButtonElement | null;
 
 let conversation: { role: "user" | "assistant", content: string }[] = [];
 
@@ -84,7 +77,6 @@ async function newConversation() {
 
 //Takes the shared Model list and populates all relevant UI elements
 async function getModels() {
-    //const models: string[] = await invoke("get_models");
     if (modelSelectEl) {
         console.log("Updating HTML select options");
         modelSelectEl.innerHTML = "";
@@ -165,28 +157,10 @@ async function deleteModel(modelName?: string) {
         await getModels();
         return;
     }
-
-    //TODO: Remove code referencing model-delete-input and model-delete-button elements
-    /*if (modelDeleteInputEl && modelSelectEl && modelDeleteButtonEl) {
-        modelDeleteButtonEl.textContent = "Deleting...";
-        const modelName = modelDeleteInputEl.value;
-        let res = await invoke("delete_model", {modelName: modelName});
-        if (res) {
-            alert(res + " deleted successfully!");
-        } else {
-            alert("Failed to delete " + modelName);
-        }
-        modelDeleteInputEl.textContent = "";
-        modelDeleteButtonEl.textContent = "Delete";
-        getModels();
-    }*/
 }
 
 async function showModelInfo(modelName: string): Promise<void> {
     try {
-        // const info: ModelInfo = await invoke("show_model_info", { modelName });
-        // showModal(info);
-
         //Get model info from shared models list
         // @ts-ignore
         const model: Model = models.find(m => m.name === modelName);
@@ -200,37 +174,9 @@ async function init() {
     await invoke("init");
 }
 
-// Improved: Add type and error handling
-/*function showModal(content: ModelInfo | string): void {
-    let modal = document.getElementById("model-info-modal");
-    let modalContent = document.getElementById("model-info-modal-content");
-    if (modal && modalContent) {
-        if (typeof content === 'object' && content !== null) {
-            let html = '<table style="width:100%;border-collapse:collapse;">';
-            for (const [key, value] of Object.entries(content)) {
-                let displayValue = value;
-                if (typeof value === 'string' && value.startsWith('String("')) {
-                    displayValue = value.replace(/^String\("|"\)$/g, '');
-                } else if (typeof value === 'string' && value.startsWith('Number(')) {
-                    displayValue = value.replace(/^Number\(|\)$/g, '');
-                } else if (value === null || value === 'Null') {
-                    displayValue = '<span style="color:#888;">null</span>';
-                }
-                html += `<tr><td style='padding:4px 8px;border-bottom:1px solid #eee;vertical-align:top;'><strong>${key}</strong></td><td style='padding:4px 8px;border-bottom:1px solid #eee;'>${displayValue}</td></tr>`;
-            }
-            html += '</table>';
-            modalContent.innerHTML = html;
-        } else {
-            modalContent.textContent = String(content);
-        }
-        modal.style.display = "flex";
-    }
-}*/
-
 function showModelModal(model: Model): void {
     console.log("is this working?");
     let modal = document.getElementById("model-info-modal");
-    //let modalContent = document.getElementById("model-info-modal-content");
     if (modal) {
         let detailsEl = document.getElementById("model-info-details");
         let licenseEl = document.getElementById("model-info-license");
@@ -275,8 +221,6 @@ window.addEventListener("DOMContentLoaded", () => {
     modelSelectEl = document.querySelector("#model-select");
     modelDownloadInputEl = document.querySelector("#model-download-input");
     modelDownloadButtonEl = document.querySelector("#model-download-button");
-    // modelDeleteInputEl = document.querySelector("#model-delete-input");
-    // modelDeleteButtonEl = document.querySelector("#model-delete-button");
 
     // @ts-ignore
     init();
