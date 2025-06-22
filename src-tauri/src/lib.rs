@@ -1,9 +1,11 @@
 mod client_utils;
 
 use futures_util::StreamExt;
+use ollama_rs::coordinator::Coordinator;
 use ollama_rs::generation::chat::request::ChatMessageRequest;
 use ollama_rs::generation::chat::ChatMessage;
 use ollama_rs::generation::embeddings::request::{EmbeddingsInput, GenerateEmbeddingsRequest};
+use ollama_rs::generation::tools::implementations::{DDGSearcher, Scraper, Calculator};
 use ollama_rs::models::ModelInfo;
 use ollama_rs::Ollama;
 use serde::{Deserialize, Serialize};
@@ -60,7 +62,6 @@ async fn chat(
     println!("Capabilities for model '{}': {:?}", request.model, capabilities);
 
     if capabilities.contains(&"embedding".to_string()) {
-        //TODO: Do embedding generation logic here
         let response = ollama
             .generate_embeddings(GenerateEmbeddingsRequest::new(
                 request.model.clone(),
@@ -88,6 +89,43 @@ async fn chat(
                 return Err(format!("Failed to generate embeddings: {:?}", e));
             }
         }
+        return Ok(())
+    } else if capabilities.contains(&"tools".to_string()) {
+        let mut messages = state.chat_history.clone();
+        messages.push(ChatMessage::user(request.prompt));
+
+        let mut coordinator = Coordinator::new(ollama, request.model.clone(), vec![])
+            .add_tool(DDGSearcher::new())
+            .add_tool(Scraper {});
+
+        let response = coordinator
+            .chat(messages.clone())
+            .await;
+
+        let response = match response {
+            Ok(res) => res,
+            Err(e) => {
+                return Err(format!("Failed to get chat response: {:?}", e));
+            }
+        };
+
+        let chat_response = ChatResponse {
+            message: response.message.content,
+        };
+
+        println!("Chat response from tool calling: {:?}", &chat_response.message);
+
+        if response.done {
+            println!("Done!");
+            // If the response is final, we can update the chat history
+            messages.push(ChatMessage::assistant(chat_response.message.clone()));
+            // Update the state with the new chat history
+            state.chat_history = messages.clone();
+        }
+
+        app.emit("chat-message", chat_response)
+            .map_err(|e| e.to_string())?;
+
         return Ok(())
     };
 
@@ -131,16 +169,6 @@ async fn new_conversation(state: State<'_, Mutex<AppState>>) -> Result<(), Strin
     state.chat_history.clear();
     Ok(())
 }
-
-/*#[tauri::command]
-async fn get_models(state: State<'_, Mutex<AppState>>) -> Result<Vec<String>, String> {
-    let ollama = state.lock().await.ollama.clone();
-    let res = get_model_names(&ollama).await;
-    match res {
-        Ok(models) => Ok(models),
-        Err(e) => Err(format!("Failed to get model names: {}", e)),
-    }
-}*/
 
 #[tauri::command]
 async fn download_model(
@@ -266,7 +294,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             download_model,
             delete_model,
-            //get_models,
             chat,
             new_conversation,
             show_model_info,
