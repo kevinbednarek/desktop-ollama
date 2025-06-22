@@ -2,6 +2,8 @@
 
 A desktop application wrapper around [Ollama](https://ollama.com/) built with [Tauri](https://tauri.app/) and [ollama-rs](https://github.com/pepperoni21/ollama-rs).
 
+![Desktop Ollama Demo](resources/Desktop%20Ollama%20Demo.gif)
+
 ## Usage
 
 ### 1. Install Ollama
