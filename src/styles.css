@@ -152,6 +152,29 @@ select:focus {
   justify-content: flex-start;
 }
 
+.panel-about-content {
+  max-width: 600px;
+  margin: 0 auto;
+  background: transparent;
+  padding: 2em 2em 0 2em;
+  border-radius: 12px;
+  box-shadow: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.panel-about-content h2 {
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .panel-about-content {
+    padding: 1em 0.5em 0 0.5em;
+  }
+}
+
 #models-list {
   list-style: none;
   padding-left: 0;
@@ -334,6 +357,34 @@ select:focus {
   width: 100%;
   margin-bottom: 0.5em;
   box-sizing: border-box;
+}
+#error-banner {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  margin: 1em;
+  left: 0;
+  right: 0;
+  width: auto;
+  max-width: calc(100vw - 2em);
+  box-sizing: border-box;
+  position: fixed;
+  border-radius: 8px;
+}
+#error-banner-close {
+  position: static;
+  display: inline;
+  right: unset;
+  top: unset;
+  bottom: unset;
+  transform: none;
+  margin-left: 1.5em;
+  cursor: pointer;
+  font-size: 1.3em;
+  font-weight: 900;
+  align-self: center;
 }
 @media (prefers-color-scheme: dark) {
   :root {

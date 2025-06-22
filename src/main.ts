@@ -1,6 +1,102 @@
 import {invoke} from "@tauri-apps/api/core";
 import {listen} from '@tauri-apps/api/event';
 
+// Global error listener: always active
+listen("error", (event) => {
+    const banner = document.getElementById("error-banner");
+    const msg = document.getElementById("error-banner-message");
+    if (banner && msg) {
+        // @ts-ignore
+        msg.textContent = event.payload;
+        banner.style.display = "flex";
+    }
+    // Reset button states on error
+    if (modelDownloadButtonEl) {
+        modelDownloadButtonEl.textContent = "Download";
+        modelDownloadButtonEl.disabled = false;
+    }
+    if (streamChatButtonEl) {
+        streamChatButtonEl.textContent = "Chat";
+        streamChatButtonEl.disabled = false;
+    }
+    // Add more button resets as needed
+});
+
+// Banner close logic
+window.addEventListener("DOMContentLoaded", () => {
+    const errorBanner = document.getElementById("error-banner");
+    const errorBannerClose = document.getElementById("error-banner-close");
+    if (errorBanner && errorBannerClose) {
+        errorBannerClose.addEventListener("click", () => {
+            errorBanner.style.display = "none";
+        });
+        // Close error banner when clicking outside of it
+        window.addEventListener("mousedown", (e) => {
+            if (errorBanner.style.display !== "none" && !errorBanner.contains(e.target as Node)) {
+                errorBanner.style.display = "none";
+            }
+        });
+    }
+
+    streamChatInputEl = document.querySelector("#stream-chat-input");
+    streamChatMsgEl = document.querySelector("#stream-chat-msg");
+    streamChatButtonEl = document.querySelector("#chat-button");
+    modelSelectEl = document.querySelector("#model-select");
+    modelDownloadInputEl = document.querySelector("#model-download-input");
+    modelDownloadButtonEl = document.querySelector("#model-download-button");
+
+    // @ts-ignore
+    init();
+    listen<Model[]>('model-list-update', (event) => {
+        console.log(
+            `Models: ${JSON.stringify(event.payload.map(model => model.name))}`
+        );
+        models = event.payload;
+        console.log("Model count: " + models.length);
+        getModels();
+        updateChatInputPlaceholderForSelectedModel();
+    });
+
+
+    document.querySelector("#stream-chat-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        chat();
+    });
+
+    document.querySelector("#model-download-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        downloadModel();
+    });
+
+    document.querySelector("#model-delete-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        deleteModel();
+    });
+
+    document.querySelector("#new-conversation-btn")?.addEventListener("click", () => {
+        newConversation();
+    });
+
+    // Update chat input placeholder on select change
+    if (modelSelectEl) {
+        modelSelectEl.addEventListener("change", updateChatInputPlaceholderForSelectedModel);
+    }
+
+    // Modal close logic
+    const modal = document.getElementById("model-info-modal");
+    const modalClose = document.getElementById("model-info-modal-close");
+    if (modal && modalClose) {
+        modalClose.addEventListener("click", () => {
+            modal.style.display = "none";
+        });
+        // Close modal when clicking outside modal-content
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
+});
 type Model = {
     name: string,
     license: string,
@@ -117,6 +213,7 @@ async function getModels() {
 }
 
 async function downloadModel() {
+    alert("Downloading model... This may take a while, please be patient.");
     if (modelDownloadInputEl && modelSelectEl && modelDownloadButtonEl) {
         modelDownloadButtonEl.textContent = "Downloading...";
         modelDownloadButtonEl.disabled = true;
@@ -213,64 +310,3 @@ function updateChatInputPlaceholderForSelectedModel() {
         streamChatInputEl.placeholder = "Let's chat!";
     }
 }
-
-window.addEventListener("DOMContentLoaded", () => {
-    streamChatInputEl = document.querySelector("#stream-chat-input");
-    streamChatMsgEl = document.querySelector("#stream-chat-msg");
-    streamChatButtonEl = document.querySelector("#chat-button");
-    modelSelectEl = document.querySelector("#model-select");
-    modelDownloadInputEl = document.querySelector("#model-download-input");
-    modelDownloadButtonEl = document.querySelector("#model-download-button");
-
-    // @ts-ignore
-    init();
-    listen<Model[]>('model-list-update', (event) => {
-        console.log(
-            `Models: ${JSON.stringify(event.payload.map(model => model.name))}`
-        );
-        models = event.payload;
-        console.log("Model count: " + models.length);
-        getModels();
-        updateChatInputPlaceholderForSelectedModel();
-    });
-
-
-    document.querySelector("#stream-chat-form")?.addEventListener("submit", (e) => {
-        e.preventDefault();
-        chat();
-    });
-
-    document.querySelector("#model-download-form")?.addEventListener("submit", (e) => {
-        e.preventDefault();
-        downloadModel();
-    });
-
-    document.querySelector("#model-delete-form")?.addEventListener("submit", (e) => {
-        e.preventDefault();
-        deleteModel();
-    });
-
-    document.querySelector("#new-conversation-btn")?.addEventListener("click", () => {
-        newConversation();
-    });
-
-    // Update chat input placeholder on select change
-    if (modelSelectEl) {
-        modelSelectEl.addEventListener("change", updateChatInputPlaceholderForSelectedModel);
-    }
-
-    // Modal close logic
-    const modal = document.getElementById("model-info-modal");
-    const modalClose = document.getElementById("model-info-modal-close");
-    if (modal && modalClose) {
-        modalClose.addEventListener("click", () => {
-            modal.style.display = "none";
-        });
-        // Close modal when clicking outside modal-content
-        modal.addEventListener("click", (e) => {
-            if (e.target === modal) {
-                modal.style.display = "none";
-            }
-        });
-    }
-});

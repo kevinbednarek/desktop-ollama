@@ -12,6 +12,11 @@
 
 <body>
 
+<div id="error-banner" style="display:none;position:fixed;top:0;left:0;width:100vw;z-index:2000;background:#d32f2f;color:#fff;padding:1em 2em 1em 1.5em;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:1.1em;align-items:center;gap:1em;">
+  <span id="error-banner-message"></span>
+  <span id="error-banner-close" style="position:absolute;right:1.5em;top:1em;cursor:pointer;font-size:1.3em;font-weight:900;">&times;</span>
+</div>
+
 <main class="container">
     <nav class="top-nav">
         <button type="button" class="nav-btn" data-panel="chat">Chat</button>
@@ -46,7 +51,14 @@
     </section>
 
     <section id="panel-about" class="panel" style="display:none;">
-        <p>Desktop Ollama UI built with Rust, Tauri, and Typescript.</p>
+      <div class="panel-about-content">
+        <h2>What is Desktop Ollama?</h2>
+        <p>Desktop Ollama is a user-friendly desktop application wrapper around the local Ollama API, making it easy to interact with large language models (LLMs) privately and securely.</p>
+        <p>Ollama is a platform for running large language models (LLMs) directly on your own computer. This means you can use powerful AI models without sending your data to the cloud, helping to keep your information private and secure.</p>
+        <p>Running models locally is great for data privacy, as your prompts and results never leave your device. You have full control over your data and can experiment with different models safely.</p>
+        <p>There are many models available, each with different strengths and capabilities. We recommend trying out several models to see which one works best for your specific needs and use case.</p>
+        <p><strong>Tip:</strong> Try smaller models first! As a rule of thumb, you should have at least as much free system memory (RAM) as the size of the model file. For example, a 7B model (~4GB) needs at least 4GB of free RAM, a 13B model (~8GB) needs at least 8GB, and so on. Running larger models on systems with less memory may cause slowdowns or failures.</p>
+      </div>
     </section>
 
     <!-- Model Info Modal -->

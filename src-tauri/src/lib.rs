@@ -4,7 +4,6 @@ use futures_util::StreamExt;
 use ollama_rs::generation::chat::request::ChatMessageRequest;
 use ollama_rs::generation::chat::ChatMessage;
 use ollama_rs::generation::embeddings::request::{EmbeddingsInput, GenerateEmbeddingsRequest};
-use ollama_rs::models::ModelInfo;
 use ollama_rs::Ollama;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -57,10 +56,9 @@ async fn chat(
         .map(|m| m.capabilities.clone())
         .unwrap_or_default();
 
-    println!("Capabilities for model '{}': {:?}", request.model, capabilities);
+    //println!("Capabilities for model '{}': {:?}", request.model, capabilities);
 
     if capabilities.contains(&"embedding".to_string()) {
-        //TODO: Do embedding generation logic here
         let response = ollama
             .generate_embeddings(GenerateEmbeddingsRequest::new(
                 request.model.clone(),
@@ -83,12 +81,13 @@ async fn chat(
                 // Emit the embeddings to the frontend
                 app.emit("chat-message", chat_response)
                     .map_err(|e| e.to_string())?;
+                return Ok(())
             },
             Err(e) => {
+                app.emit("error", format!("Failed to generate embeddings: {:?}", e)).ok();
                 return Err(format!("Failed to generate embeddings: {:?}", e));
             }
         }
-        return Ok(())
     };
 
     //TODO: Isolate regular chat/completion logic
@@ -103,11 +102,17 @@ async fn chat(
 
     let mut chat_response_text = String::new();
     while let Some(response) = stream.next().await {
-        let response = response.map_err(|e| format!("Failed to get chat response: {:?}", e))?;
+        let response = response.map_err(|e| format!("Failed to get chat response: {:?}", e));
+        let response = match response {
+            Ok(r) => r,
+            Err(e) => {
+                app.emit("error", format!("Failed to get chat response: {:?}", e)).ok();
+                return Err(e.to_string());
+            }
+        };
         let chat_response = ChatResponse {
             message: response.message.content,
         };
-        print!("{}", &chat_response.message);
         // Building the response from the assistant
         chat_response_text.push_str(&chat_response.message);
         // Emitting a message to the "chat-message" listener on the frontend
@@ -131,16 +136,6 @@ async fn new_conversation(state: State<'_, Mutex<AppState>>) -> Result<(), Strin
     state.chat_history.clear();
     Ok(())
 }
-
-/*#[tauri::command]
-async fn get_models(state: State<'_, Mutex<AppState>>) -> Result<Vec<String>, String> {
-    let ollama = state.lock().await.ollama.clone();
-    let res = get_model_names(&ollama).await;
-    match res {
-        Ok(models) => Ok(models),
-        Err(e) => Err(format!("Failed to get model names: {}", e)),
-    }
-}*/
 
 #[tauri::command]
 async fn download_model(
@@ -179,7 +174,11 @@ async fn download_model(
 
             Ok(())
         },
-        Err(e) => Err(format!("Failed to download model '{}': {}", model_name, e))
+        Err(e) => {
+            let msg = format!("Failed to download model '{}': {}", model_name, e);
+            app.emit("error", msg.clone()).ok();
+            Err(msg)
+        }
     }
 }
 
@@ -205,20 +204,36 @@ async fn delete_model(
 
             Ok(())
         },
-        Err(e) => Err(format!("Failed to delete model '{}': {}", model_name, e))
+        Err(e) => {
+            let msg = format!("Failed to delete model '{}': {}", model_name, e);
+            app.emit("error", msg.clone()).ok();
+            Err(msg)
+        }
     }
 }
 
-#[tauri::command]
+/*#[tauri::command]
 async fn show_model_info(
     model_name: String,
-    state: State<'_, Mutex<AppState>>
+    state: State<'_, Mutex<AppState>>,
+    app: tauri::AppHandle
 ) -> Result<Map<String, Value>, String> {
     let client = state.lock().await.ollama.clone();
-    let info: ModelInfo = client.show_model_info(model_name).await.map_err(|e| e.to_string())?;
+    let info = client.show_model_info(model_name.clone()).await.map_err(|e| e.to_string());
 
-    Ok(info.model_info)
-}
+    match info {
+        Ok(info) => {
+            // Return the model info as a Map<String, Value>
+            Ok(info.model_info)
+        },
+        Err(e) => {
+            let msg = format!("Failed to get model info for '{}': {}", model_name, e);
+            app.emit("error", msg.clone()).ok();
+            Err(msg)
+        }
+    }
+
+}*/
 
 #[tauri::command]
 async fn init(
@@ -266,10 +281,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             download_model,
             delete_model,
-            //get_models,
             chat,
             new_conversation,
-            show_model_info,
+            //show_model_info,
             init
         ])
         .run(tauri::generate_context!())
